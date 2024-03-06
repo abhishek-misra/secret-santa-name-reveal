@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flip Cards</title>
+    <style>
+        body {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f2f2f2;
+        }
+
+        .card {
+            width: 150px;
+            height: 150px;
+            perspective: 1000px;
+            margin: 10px;
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+        }
+
+        .flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            border-radius: 10px;
+            padding: 0 10px;
+            text-align: center;
+        }
+
+        .card-front {
+            background-color: #087848;
+            cursor: pointer;
+        }
+
+        .card-back {
+            background-color: #e76109;
+            transform: rotateY(180deg);
+        }
+
+        .disabled .card-front {
+            background-color: #e30a25 !important;
+            cursor: not-allowed !important;
+        }
+
+        .main-div {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <div>
+        <h1 style="text-align: center;">Secret Santa Game</h1>
+        <ol style="font-size: 20px;">
+            <li>Select Your Name from the drop down</li>
+            <li>Click the card to view and make note of the name. Ensure you click on only one card.</li>
+            <li>Observe and keep the name of the gift recipient confidential.</li>
+            <li>Wait for 3-5 seconds until all cards are hidden.</li>
+        </ol>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 20px">
+        <label for="playerSelect">Select Your Name: </label>
+        <select id="playerSelect" style="height:35px; width: 150px;">
+            <option value="">--Select--</option>
+            <!-- Options will be populated here -->
+        </select>
+    </div>
+
+    <div class="main-div" id="card-container">
+
+    </div>
+
+    <script>
+
+        // Two separate arrays: one for dropdown, one for cards
+        var defaultDropDown = [
+            { "name": "John Doe", "selected": false },
+            { "name": "Will Smith", "selected": false },
+            { "name": "Walter", "selected": false },
+            { "name": "James", "selected": false },
+        ];
+
+        var defaultCards = [
+            { "name": "John Doe", "disabled": false },
+            { "name": "Will Smith", "disabled": false },
+            { "name": "Walter", "disabled": false },
+            { "name": "James", "disabled": false }
+        ];
+
+        // Function to get data from local storage or use default
+        function getInitialData(name, defaultData) {
+            var storedData = localStorage.getItem(name);
+            if (storedData) {
+                return JSON.parse(storedData);
+            } else {
+                return defaultData;
+            }
+        }
+
+        var drpData = getInitialData('employeesDropdown', defaultDropDown);
+        var employeesDropdown = drpData.map(employee => ({ name: employee.name, selected: employee.selected }));
+
+
+        var crdData = getInitialData('employeesCards', defaultCards);
+        var employeesCards = crdData.map(employee => ({ name: employee.name, disabled: employee.disabled }));
+
+        function checkDropdownAndToggleCardContainer() {
+            var dropdown = $('#playerSelect');
+            var allSelected = employeesDropdown.every(employee => employee.selected);
+            var cardContainer = $('#card-container');
+
+            if (dropdown.val() === '') {
+                cardContainer.hide(); // Hide the card container
+            } else {
+                cardContainer.show(); // Show the card container
+            }
+        }
+
+        // Function to populate the dropdown
+        function populateDropdown() {
+            var dropdown = $('#playerSelect');
+            dropdown.empty(); // Clear existing options
+            dropdown.append($('<option>', {
+                value: '',
+                text: '--Select--'
+            }));
+            employeesDropdown.forEach(function (employee, index) {
+                dropdown.append($('<option>', {
+                    value: employee.name,
+                    text: employee.name,
+                    disabled: employee.selected
+                }));
+            });
+        }
+
+        function generateCards() {
+            debugger;
+            var cardContainer = $('#card-container');
+            cardContainer.empty(); // Clear existing cards
+
+            var currentPlayerName = $('#playerSelect').val();
+            var currentPlayerIndex = employeesCards.findIndex(x=>x.name === currentPlayerName);
+            var dropDownIndex = employeesDropdown.findIndex(x=>x.name === currentPlayerName);
+
+            employeesCards.forEach(function (employee, index) {
+                var card = $('<div class="card">');
+                var cardInner = $('<div class="card-inner">');
+                var cardFront = $('<div class="card-face card-front">Click to Discover Your Secret Santa Gift Receiver.</div>');
+                var cardBack = $('<div class="card-face card-back">' + employee.name + '</div>');
+
+                card.append(cardInner);
+                cardInner.append(cardFront);
+                cardInner.append(cardBack);
+
+                // Check if the card should be disabled
+                if (employee.disabled || currentPlayerIndex == index) {
+                    card.addClass('disabled');
+                } else {
+                    card.click(function () {
+                        var currentCard = $(this);
+                        if (!currentCard.hasClass('disabled') && !currentCard.hasClass('flipped')) {
+                            currentCard.addClass('flipped');
+                            setTimeout(function () {
+                                currentCard.removeClass('flipped');
+                                currentCard.addClass('disabled');
+
+                                employeesCards[index].disabled = true; // Disable the card
+                                employeesDropdown[dropDownIndex].selected = true; // Mark the dropdown option as selected
+                                populateDropdown(); // Update dropdown
+                                generateCards(); // Regenerate cards to reflect changes
+                            }, 5000);
+                        }
+                    });
+                }
+
+                cardContainer.append(card);
+            });
+
+            localStorage.setItem("employeesDropdown", JSON.stringify(employeesDropdown));
+            localStorage.setItem("employeesCards", JSON.stringify(employeesCards));
+
+            checkDropdownAndToggleCardContainer(); // Call the function to check and toggle card container visibility
+        }
+
+        // Dropdown change event
+        $('#playerSelect').change(function () {
+            generateCards();
+            checkDropdownAndToggleCardContainer();
+        });
+
+        // Call the functions on page load
+        $(document).ready(function () {
+            populateDropdown();
+            generateCards();
+            checkDropdownAndToggleCardContainer(); //
+        });
+    </script>
+
+</body>
+
+</html>
